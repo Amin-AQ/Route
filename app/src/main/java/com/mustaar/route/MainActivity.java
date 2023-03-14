@@ -46,7 +46,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     CountDownTimer timer;
-
+    Double prevLat, prevLong;
     LocationRequest locationRequest;
     public static final int REQUEST_CHECK_SETTING=1001;
     FusedLocationProviderClient fusedLocationProviderClient;
@@ -58,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        prevLat=0.0;
+        prevLong=0.0;
         timer=null;
         sessionManager = new SessionClass(getApplicationContext());
         sessionManager.checkLogin();
@@ -110,25 +112,28 @@ public class MainActivity extends AppCompatActivity {
 
     protected void logLocation(Address address)
     {
-        Log.d("Debug", "Latitude: " + address.getLatitude());
-        Log.d("Debug", "Longitude: " + address.getLongitude());
-        con=connectionClass(ConnectionClass.ip,ConnectionClass.port,ConnectionClass.username,ConnectionClass.password,ConnectionClass.db);
-        try{
-            if(con!=null)
-            {
-                Log.d("Debug", "Latitude: " + address.getLatitude());
-                Log.d("Debug", "Longitude: " + address.getLongitude());
-                String insert="INSERT INTO Log VALUES ('"+userDetails.get("phone")+"', GETDATE(), GETDATE(), " + String.valueOf(address.getLatitude())+", "+ String.valueOf(address.getLongitude()) +")";
-                Statement s = con.createStatement();
-                s.execute(insert);
-                con.close();
-            }
+        double newLat=address.getLatitude(), newLong= address.getLongitude();
+        Log.d("Debug", "Latitude: " + newLat);
+        Log.d("Debug", "Longitude: " + newLong);
+        if(LocationUtil.distMoreThanHundredMeters(prevLat,prevLong,newLat,newLong)) {
+            con = connectionClass(ConnectionClass.ip, ConnectionClass.port, ConnectionClass.username, ConnectionClass.password, ConnectionClass.db);
+            try {
+                if (con != null) {
+                    Log.d("Debug", "Latitude: " + newLat);
+                    Log.d("Debug", "Longitude: " + newLong);
+                    String insert = "INSERT INTO Log VALUES ('" + userDetails.get("phone") + "', GETDATE(), GETDATE(), " + String.valueOf(newLat) + ", " + String.valueOf(newLong) + ")";
+                    Statement s = con.createStatement();
+                    s.execute(insert);
+                    con.close();
+                }
 
+            } catch (Exception exception) {
+                Log.e("Error", exception.getMessage());
+                Log.d("Cause", userDetails.get("phone"));
+            }
         }
-        catch (Exception exception){
-            Log.e("Error",exception.getMessage());
-            Log.d("Cause", userDetails.get("phone"));
-        }
+        else
+            Log.d("Debug","New coordinated within 100m of old ones. Database log skipped.");
     }
 
     // requests location permission if not allowed
